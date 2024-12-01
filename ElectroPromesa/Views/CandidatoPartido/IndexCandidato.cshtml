@@ -1,0 +1,187 @@
+﻿@using ElectroPromesa.ViewModels.CandidatoPartidos
+@model IndexCandidatosViewModel
+
+@{
+}
+
+
+@section Styles {
+    <link href="~/lib/datatable/styles.css" rel="stylesheet" />
+    <link href="~/css/loader.css" rel="stylesheet" />
+}
+
+
+<div>
+    <div class="d-flex align-items-start justify-content-between">
+        <div class="d-flex justify-content-start gap-3">
+            <img style="object-fit: fill" src="~/@Model.FotoUrl" width="200px" class="shadow" height="200px" alt="@Model.Nombre">
+            <div>
+                <h1>@Model.Nombre @Model.Apellidos</h1>
+            </div>
+        </div>
+        <a class="d-flex align-items-center gap-2 text-secondary fs-4" asp-action="Index" asp-controller="Candidato">
+            Regresar
+        </a>
+    </div>
+
+
+    <div class="my-4">
+        <a asp-action="AssignPartido" asp-route-id="@Model.Id"
+           class="btn btn-primary d-inline-flex align-items-center gap-2 py-2 px-4 mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle" viewBox="0 0 16 16">
+                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
+                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4" />
+            </svg>
+
+            @if (Model.Partidos.Count > 0)
+            {
+                <span>
+                    Cambiar Partido Político
+                </span>
+            }
+            else
+            {
+                <span>
+                    Asignar Partido Político
+                </span>
+            }
+        </a>
+    </div>
+
+    <div class="my-4 d-flex flex-column">
+        <h2 class="text-secondary">Historial Partidos Politicos</h2>
+        @if (Model.Partidos.Count > 0)
+        {
+            <div id="loader" class="spinner mx-auto my-4 d-block"></div>
+            <table id="tablaPartidos" class="display d-none mx-auto">
+                <thead>
+                    <tr>
+                        <th class="text-center">Partido Político</th>
+                        <th class="text-center">Fecha Inicio</th>
+                        <th class="text-center">Fecha Fin</th>
+                        <th class="text-center">Cambiar de partido</th>
+                    </tr>
+                </thead>
+                <tbody class="text-center">
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p>Sin historial</p>
+        }
+    </div>
+</div>
+
+
+@section Scripts {
+    <script src="~/lib/datatable/script.js"></script>
+    <script>
+        const { partidos: data} = @Json.Serialize(Model);
+        console.log(data);
+        const editarUrl = '@Url.Action("Edit", "Candidato")';
+        const borrarUrl = '@Url.Action("Delete", "Candidato")';
+        const asignarPartidoUrl = '@Url.Action("AssignCandidatoPartido", "CandidatoPartido")';
+
+        let tablaPartidos;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelector("#tablaPartidos").classList.remove("d-none");
+            document.querySelector("#loader").remove();
+            tablaPartidosConfig();
+        });
+
+        const tablaPartidosConfig = () => {
+            tablaPartidos = new DataTable('#tablaPartidos', {
+                data,
+                columns: [
+                    { 
+                        data: 'partido',
+                        render: (data, type, row) => {
+                            return `${data.abreviatura} (${data.nombre})`;
+                        }
+                    },
+                    { 
+                        data: 'fechaInicio',
+                        render: (data) => {
+                            return data + ' ';
+                        }
+                    },
+                    {
+                        data: 'fechaFin',
+                        render: (data, type, row) => {
+                            return data >= row.fechaInicio ? data + ' ' : '-----';
+                        }
+                    },
+                    {
+                        data: 'fechaFin',
+                        render: (data, type, row) => {
+                            if (data >= row.fechaInicio) {
+                                console.log(row);
+                                return `
+                                        <button onclick="cambiarPartidoAlert(${row.id})" class="btn btn-primary d-inline-flex gap-2 px-4 py-2">
+                                            Cambiar
+                                        </button>
+                                        `;
+                            }else{
+                                return "<span class='text-success fw-bold'>Activo</span>";
+                            }
+                        }
+                    },
+                ],
+            });
+        };
+
+
+        const cambiarPartidoAlert = (id) => {
+            Swal.fire({
+                title: "Advertencia",
+                text: "¿Estas seguro de cambiar este candidato al partido?",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Confirmar",
+                cancelButtonText: "Cancelar"
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    await fetch(asignarPartidoUrl, {
+                        method: 'POST',
+                        body: id,
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    }).then(response => {
+                        if (!response.ok) throw new Error("Status Code 505");
+                        return response.json();
+                    })
+                    .then(data => {
+                        actualizarPartidoAnterior(data);
+                        actualizarPartidoNuevo(id);
+                    })
+                    .catch(error => {
+                        Swal.fire({
+                            title: "Error",
+                            text: "Intentelo más tarde",
+                            icon: "error"
+                        });
+                    });
+                }
+            });
+        }
+
+        const actualizarPartidoNuevo = (partidoIdNuevo) => {
+            let partidoNuevo = tablaPartidos.row((idx, data) => data.id == partidoIdNuevo);
+            let paritodNuevoData = partidoNuevo.data();
+            paritodNuevoData.fechaFin = '-----';
+            partidoNuevo.data(paritodNuevoData).draw();
+        }
+
+        const actualizarPartidoAnterior = (fechaFin) => {
+            let partidoAnterior = tablaPartidos.row((idx, data) => data.fechaInicio > data.fechaFin);
+            let paritodAnteriorData = partidoAnterior.data()
+            paritodAnteriorData.fechaFin = fechaFin;
+            partidoAnterior.data(paritodAnteriorData).draw();
+        }
+    </script>
+}

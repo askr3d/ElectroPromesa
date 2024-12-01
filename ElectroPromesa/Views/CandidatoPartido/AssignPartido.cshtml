@@ -1,0 +1,27 @@
+﻿@using ElectroPromesa.ViewModels.CandidatoPartidos
+@model AssignPartidoViewModel
+
+@{
+}
+
+<div class="d-flex justify-content-between">
+    <h1>Asignar Partido</h1>
+    <a class="d-flex align-items-center gap-2 text-secondary fs-4" asp-action="IndexCandidato" asp-route-id="@Model.CandidatoId">
+        Regresar
+    </a>
+</div>
+
+<form method="post" asp-controller="CandidatoPartido" asp-action="AssignPartido" class="w-100 my-4 d-flex flex-column mx-auto gap-4">
+    <input type="hidden" asp-for="CandidatoId" />
+    <div class="d-flex flex-column gap-4 mb-4 align-items-center">
+        <div class="mb-3">
+            <label asp-for="PartidoId" class="form-label"></label>
+            <select asp-for="PartidoId" asp-items="@Model.Partidos"
+                    class="form-select"></select>
+            <span asp-validation-for="PartidoId" class="text-danger"></span>
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary d-block mx-auto px-4 py-2 fw-bold">
+        Asignar
+    </button>
+</form>
